@@ -12,6 +12,7 @@ def rsync(
     strict_host_keys=True,
     rsync_opts="",
     ssh_opts="",
+    remote_to_local=False,
 ):
     """
     Convenient wrapper around your friendly local ``rsync``.
@@ -121,11 +122,18 @@ def rsync(
     options = f"{options_map['delete']}{options_map['exclude']} -pthrvz {options_map['extra']} {options_map['rsh']}"
     # Create and run final command string
     # TODO: richer host object exposing stuff like .address_is_ipv6 or whatever
-    if host.count(":") > 1:
+     if host.count(":") > 1:
         # Square brackets are mandatory for IPv6 rsync address,
         # even if port number is not specified
-        cmd = "rsync {} {} [{}@{}]:{}"
+        # Patch to enable remote to local copying
+        if remote_to_local:
+            cmd = "rsync {options} [{user}@{host}]:{target} {source}"
+        else:
+            cmd = "rsync {options} {source} [{user}@{host}]:{target}"
     else:
-        cmd = "rsync {} {} {}@{}:{}"
-    cmd = cmd.format(options, source, user, host, target)
+        if remote_to_local:
+            cmd = "rsync {options} {user}@{host}:{target} {source}"
+        else:
+            cmd = "rsync {options} {source} {user}@{host}:{target}"
+    cmd = cmd.format(options=options, source=source, user=user, host=host, target=target)
     return c.local(cmd)
